@@ -1,0 +1,237 @@
+---
+---
+---
+
+# Common Genomics Plots using ggplot2
+
+This script demonstrates how to generate commonly used genomics visualization plots (such as barplot, density plot, scatter plot, violin plot, and box plot) using the ggplot2 R package.
+
+We use the GSE183947 gene expression data set converted into in a long format to allow flexible plotting with ggplot2. These plots are commonly used in transcriptomics and cancer genomics studies to visualize gene expression differences across biological conditions.
+
+# Setup Environment
+
+First we clean the R environment and load the required packages.
+
+```{r setup, message=FALSE}
+# Clean environment
+rm(list = ls())
+gc()
+
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyr)
+library(RColorBrewer)
+```
+
+# Load Gene Expression Dataset
+
+The dataset used in this tutorial is a long-format gene expression table.Read this data using read_delim() function in readr package.
+
+```{r}
+data.long <- read_delim("long_format_expression_data_GSE183947.txt")
+
+dat <- data.long
+#View initial rows of the data
+head(dat)
+```
+
+# ggplot2 Basic Framework
+
+The basic structure of a ggplot figure to make all the plots is:
+
+``` r
+ggplot(data, aes(x = variable_x, y = variable_y)) +
+  geom_*()
+```
+
+Examples:
+
+| Plot Type    | Function       |
+|--------------|----------------|
+| Bar plot     | geom_col()     |
+| Scatter plot | geom_point()   |
+| Density plot | geom_density() |
+| Violin plot  | geom_violin()  |
+| Box plot     | geom_boxplot() |
+
+Here in place of asterisk you can add label of any plot you need to make. \# Select Genes of Interest
+
+We select a subset of genes to demonstrate visualization.
+
+```{r}
+genes_of_interest <- c(
+'TP53','ATM','PIK3CA','BRCA1','BRCA2','CD163','MRC1','IL10','CD3E','CD3E')
+
+filtered_dat <- dat %>% filter(gene %in% genes_of_interest)
+
+head(filtered_dat)
+```
+
+# Custom Plot Theme (Publication Style)
+
+Creating a reusable theme for consistent visualization.
+
+```{r}
+my_theme <- theme(
+  axis.line = element_line(colour = "black", linewidth = 0.75),
+  axis.text = element_text(colour = 'black',size=10, face='bold'),
+  axis.title = element_text(size=14, face='bold'),
+  axis.ticks = element_line(color='black', linewidth=1),
+
+  legend.position = "right",
+  legend.title = element_text(face='bold'),
+  legend.background = element_blank(),
+  legend.box.background = element_rect(colour="black"),
+
+  panel.grid.major.y = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  panel.grid.major.x = element_blank(),
+  panel.grid.minor.x = element_blank(),
+
+  plot.background = element_rect(fill=NULL, colour='white'),
+  panel.background = element_rect(fill='white')
+)
+```
+
+# 1. Bar Plot
+
+A bar plot comparing gene expression levels across tissue types.
+
+```{r}
+ggplot(filtered_dat,
+       aes(x=gene, y=expression, fill=breast_tissue)) +
+  geom_col()
+```
+
+Adding the axis labels, legend titles and adding color brewer (for better color visualization) to plot.
+
+```{r}
+ggplot(filtered_dat, aes(x=gene, y=expression, fill=breast_tissue)) +
+  geom_col(position="dodge") + 
+  scale_fill_manual(values=c(normal="#00AEF3", tumor="#E81B23")) + 
+  labs(x="Genes", y="Expression (FPKM)", fill="Breast Tissue")
+```
+
+Adding the customized theme to the plot to make it visually appealing.
+
+```{r}
+ggplot(filtered_dat, aes(x= gene, y= expression, fill= breast_tissue)) + 
+  geom_col() +
+  scale_fill_manual(values=c(normal = "#00AEF3",tumor= "#E81B23")) + 
+  labs(x= "Genes", y = "Expression (FPKM)", fill = "Breast Tissue") +
+  my_theme 
+```
+
+Side by side Tumor/Normal bar plot for each gene
+
+```{r}
+ggplot(filtered_dat, aes(x = gene, y = expression, fill = breast_tissue)) + 
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c(normal = "#00AEF3", tumor = "#E81B23")) +
+  labs(x= "Genes", y = "Expression (FPKM)", fill = "Breast Tissue") +
+  my_theme 
+```
+
+# 2. Density Plot
+
+Density plots help visualize expression distribution of a gene.Example using TP53 expression.
+
+```{r}
+dat %>%
+  filter(gene == 'TP53') %>%
+  ggplot(aes(x = expression, fill = breast_tissue)) +
+  geom_density(alpha = 0.3) +
+  scale_fill_manual(values = c(normal="#00AEF3",
+                               tumor="#E81B23")) +
+  labs(x="Expression",
+       y="Density",
+       fill="Breast Tissue") +
+  my_theme
+```
+
+# 3. Scatter Plot
+
+```{r}
+#Using spread function from tidyr package here to get separate columns for two genes
+dat %>%
+  filter(gene == 'CD3E' | gene == 'IL10') %>%
+  spread(key = gene, value = expression) %>%
+  ggplot(aes(x = CD3E,
+             y = IL10,
+             color = breast_tissue)) +
+  geom_point() +
+  labs(x="CD3E Expression",
+       y="IL10 Expression",
+       color="Breast Tissue") +
+  my_theme
+```
+
+# 4. Violin Plot
+
+Violin plots show distribution and density of expression values.
+
+```{r}
+dat %>%
+  filter(gene %in% c('TP53','ATM','CD163')) %>%
+  ggplot(aes(x = gene,
+             y = expression,
+             fill = breast_tissue)) +
+  geom_violin(trim = FALSE, linewidth = 0.9) +
+  scale_fill_brewer(palette = "Paired") +
+  labs(x="Genes",
+       y="Expression (FPKM)",
+       fill="Breast Tissue") +
+  my_theme
+```
+
+# 5. Box Plot
+
+Box plots are widely used to show median expression differences between groups.
+
+```{r}
+dat %>%
+  filter(gene == 'TP53' | gene == 'ATM' | gene == 'CD163') %>%
+  ggplot(., aes(x = gene, y = expression, fill = breast_tissue)) +
+  geom_boxplot() +
+  scale_fill_brewer(palette = "Dark2") + 
+  labs (x= "Genes", y = "Expression (FPKM)", fill = "Breast Tissue") +
+  my_theme
+```
+
+Let's make a boxplot for many genes
+
+```{r}
+filtered_dat %>%
+  ggplot(., aes(x = gene, y = expression, fill = breast_tissue)) +
+  geom_boxplot() +
+  scale_fill_brewer(palette = "Spectral") + 
+  labs (x= "Genes", y = "Expression (FPKM)", fill = "Breast Tissue") +
+  my_theme 
+```
+
+Box plot using theme_bw() package for an alternative clean visualization.
+
+```{r}
+filtered_dat %>%
+  ggplot(., aes(x = as.factor(gene), y = expression)) +
+  geom_boxplot(aes(fill = breast_tissue))+
+  labs (x= "Genes", y = "Expression (FPKM)", fill = "Breast Tissue") +
+ scale_fill_manual(values = c("#09E359","#E31009")) +
+  theme_bw() +
+  theme(axis.text = element_text(colour = 'black',size= 10, face= 'bold'),
+        axis.title = element_text(colour = 'black',size= 13, face= 'bold'),
+        legend.title = element_text(face = 'bold'))
+```
+
+### Boxplot to explore the expression differences by Metastasis Status
+
+```{r}
+filtered_dat %>%
+  ggplot(., aes(x = as.factor(gene), y = expression)) +
+  geom_boxplot(aes(fill = metastasis))+
+  labs (x= "Genes", y = "Expression (FPKM)", fill = "Metastasis") +
+  scale_fill_brewer(palette = "Accent") + 
+  my_theme
+```

@@ -3,7 +3,3 @@ This repository presents the interactive report demonstrating how to generate co
 ## 🔗 Interactive Report
 
 👉 [View the full interactive HTML report]( https://imrans86.github.io/Common-genomics-plots-in-ggplot2/) 
-## ℹ️ Note
-
-GitHub does not render interactive HTML files within the repository viewer.  
-To explore the full report (including interactive plots and formatted outputs), please use the link above.
